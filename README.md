@@ -84,7 +84,7 @@ npm run test:integration  # 只读集成冒烟：gh/http/404/分页/GraphQL（�
 
 - **仓库**: https://github.com/xinvxueyuan/cordis-plugin-github
 - **npm**: `npm install @xinvxueyuan/cordis-plugin-github`
-- **许可**: MIT OR Apache-2.0（见 LICENSE-MIT / LICENSE-APACHE-2.0）
+- **许可**: MIT OR Apache-2.0（见 LICENSE-MIT / LICENSE-APACHE）
 
 通过 npm 包接入 Harness 时，先安装到 profile：
 
