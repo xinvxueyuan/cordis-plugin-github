@@ -47,8 +47,9 @@ jobs:
             echo "::error::tag v$TAG does not match package version $PKG"
             exit 1
           fi
-      # 可信发布：不配置 NODE_AUTH_TOKEN。npm 通过 OIDC
-      # (permissions.id-token: write) 换取发布权限，前提是 npm 账号
-      # 已在 Trusted Publishing 中登记本仓库 (workflow: publish.yml)。
+      # 发布认证走 NPM_TOKEN（GitHub Actions secret）；--provenance 仍通过
+      # OIDC (permissions.id-token: write) 附加来源签名。
       - name: Publish (with provenance)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish --provenance --access public
