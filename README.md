@@ -102,10 +102,22 @@ dsh plugin add @xinvxueyuan/cordis-plugin-github
         mode: auto
 ```
 
-### 发布流程（维护者）
+### 发布流程（维护者）— staged publishing
+
+> 采用 npm **staged publishing**：CI 用 `npm stage publish`（OIDC 可信发布，无需 token / 2FA）
+> 把版本放入 registry 的 **stage 队列**，维护者用 **2FA** 批准后版本才真正上线（proof-of-presence）。
 
 ```sh
-npm run build        # tsc 编译 src → lib（含 .d.ts）
-npm pack --dry-run   # 核对发布内容
-npm publish          # prepublishOnly 会自动重新构建
+# 1) 构建 + 本地核对
+npm run build
+npm pack --dry-run
+
+# 2) 打标签推送 → GitHub Actions 自动跑测试 + npm stage publish（进入 stage 队列）
+git tag v0.1.x && git push origin main --tags
+
+# 3) 人工 2FA 批准上线
+npm stage list @xinvxueyuan/cordis-plugin-github   # 取 <stage-id>
+npm stage approve <stage-id>                       # 需要 2FA
 ```
+
+（旧版 `npm publish` 直发流程已被 CI 的 staged 流程取代。）
