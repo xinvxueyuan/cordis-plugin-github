@@ -13,7 +13,12 @@
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
-  "files": ["lib", "src", "README.md", "LICENSE-MIT", "LICENSE-APACHE"],
+  "files": ["lib", "src", "README.md", "LICENSE-MIT", "LICENSE-APACHE-2.0"],
+  "author": {
+    "name": "xinvxueyuan",
+    "email": "xinvxueyuan@yeah.net",
+    "url": "https://github.com/xinvxueyuan"
+  },
   "publishConfig": { "access": "public" },
   "engines": { "node": ">=20.3.0" },
   "scripts": {

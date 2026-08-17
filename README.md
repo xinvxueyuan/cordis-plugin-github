@@ -1,5 +1,9 @@
 # cordis-plugin-github
 
+[![npm version](https://img.shields.io/npm/v/@xinvxueyuan/cordis-plugin-github)](https://www.npmjs.com/package/@xinvxueyuan/cordis-plugin-github)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue)](LICENSE-MIT)
+[![GitHub](https://img.shields.io/github/stars/xinvxueyuan/cordis-plugin-github)](https://github.com/xinvxueyuan/cordis-plugin-github)
+
 Cordis（DeepSeek Harness）插件：为 AI agent 注册规范化的 GitHub API 工具。
 **默认经本机已登录的 gh CLI 执行（`gh api`，参数数组 spawn、不经 shell，杜绝引号/转义错误）；
 gh 缺失或未登录时自动回退原生 HTTP（Node fetch + token）。**
@@ -80,7 +84,7 @@ npm run test:integration  # 只读集成冒烟：gh/http/404/分页/GraphQL（�
 
 - **仓库**: https://github.com/xinvxueyuan/cordis-plugin-github
 - **npm**: `npm install @xinvxueyuan/cordis-plugin-github`
-- **许可**: MIT OR Apache-2.0（见 LICENSE-MIT / LICENSE-APACHE）
+- **许可**: MIT OR Apache-2.0（见 LICENSE-MIT / LICENSE-APACHE-2.0）
 
 通过 npm 包接入 Harness 时，先安装到 profile：
 
