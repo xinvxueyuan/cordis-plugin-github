@@ -1,0 +1,5 @@
+node_modules/
+*.tsbuildinfo
+lib/
+fix-dsh-ctrl-c.ps1
+inspect-sessions.cjs
