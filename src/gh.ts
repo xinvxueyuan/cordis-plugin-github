@@ -14,6 +14,8 @@ export interface GhRequest {
   body?: unknown
   /** Request the raw media type (raw file contents, tarballs). */
   raw?: boolean
+  /** Accept a body that contains terminal escape sequences (Actions job logs). */
+  allowEscapeSequences?: boolean
   signal?: AbortSignal
 }
 
@@ -44,6 +46,7 @@ export function buildGhArgs(request: GhRequest & { bodyFile?: string }): string[
   }
   // JSON bodies go through a temp file (`--input`) so no inline escaping is needed.
   if (request.bodyFile) args.push('--input', request.bodyFile)
+  if (request.allowEscapeSequences) args.push('--allow-escape-sequences')
   args.push(request.endpoint)
   return args
 }

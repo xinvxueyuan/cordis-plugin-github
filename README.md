@@ -50,6 +50,10 @@ gh 缺失或未登录时自动回退原生 HTTP（Node fetch + token）。**
 | `timeoutMs` | `60000` | 单次调用超时（同时作为工具的 `timeoutMs` 预算） |
 | `maxPages` | `50` | 分页页数上限（防失控），超出截断 |
 | `perPage` | `100` | 分页每页条数 |
+| `ciIntervalMs` | `15000` | CI 监控的轮询间隔（下限 5000ms，避免打爆速率限制） |
+| `ciWaitMs` | `300000` | 前台 CI 监控的等待预算（硬上限 600000ms；超时转后台句柄） |
+| `ciMaxLogLines` | `200` | 报告里每个失败单元的日志尾部行数上限 |
+| `ciMaxLogBytes` | `65536` | 报告里每个失败单元的日志尾部的字节上限 |
 
 ## 工具
 
@@ -66,6 +70,48 @@ gh 缺失或未登录时自动回退原生 HTTP（Node fetch + token）。**
 - `query`（必填）：GraphQL 查询
 - `variables`：查询变量对象（可选）
 - `host`：覆盖 API 主机
+
+### `github_ci_watch`（长生命周期 CI 监控）
+
+给一个 CI 标识，持续轮询到终态并回报结论、失败单元与日志尾部。
+
+**目标解析**（四选一，歧义或缺失会明确报错）
+
+| 输入 | 含义 |
+| --- | --- |
+| `repo` + `run_id` | Actions run |
+| `run_url` | `https://github.com/<owner>/<repo>/actions/runs/<id>`，可带 `/job/<job_id>`；企业版主机从 URL 推导 |
+| `repo` + `check_suite_id` | check suite（汇总其 check runs） |
+| `repo` + `check_run_id` | 单个 check run（输出 + annotations） |
+
+**参数**：`mode`（`foreground` 默认 / `background`）、`timeout_ms`（仅前台，默认 `ciWaitMs`，硬上限 600000）、`interval_ms`（默认 `ciIntervalMs`，下限 5000）、`log_tail`（`failure` 默认 / `always` / `none`）、`max_log_lines`（默认 `ciMaxLogLines`）、`host`（企业版 API 主机）。
+
+**两种模式**
+
+- `mode: "foreground"`：在调用内阻塞等待，CI 到终态即返回最终报告；超过 `timeout_ms` 仍在跑则返回 `promoted` 句柄（作业 id），监控继续在后台运行。正常结束的调用**不留下作业记录**。
+- `mode: "background"`：立即返回作业句柄（形如 `ci-1`），随后用**内置** `job_output` 读状态时间线与最终报告、`job_list` 列出、`job_kill` 停止；终态会由既有作业唤醒机制在后续轮次自动回报。
+
+**状态约定（重要）**
+
+- CI 自身**成功或失败**都使作业结算为 `completed`，CI 的结论写在 `detail` / `result` / 报告里。
+- 只有**监控自身故障**（鉴权失败、404、连续网络失败超过阈值）才结算为 `failed`，并附最后一次错误。
+- 日志抓取失败只写入 `stderr` 通道并降级为"无日志尾部"，**不影响**结算。
+- 状态变更行走默认通道（模型可见）；纯叙述走 `log` 通道（仅 UI）；错误走 `stderr`；实时进度走 `updateProgress`。
+
+**示例**
+
+```jsonc
+// 前台：等一次历史 run 的结论
+{ "repo": "xinvxueyuan/cordis-plugin-github", "run_id": 37439750365, "mode": "foreground" }
+
+// 后台：拿到 ci-N 后用 job_output / job_kill 管理
+{ "run_url": "https://github.com/owner/repo/actions/runs/123456", "mode": "background" }
+
+// 失败时抓取日志尾部（前台或后台都可）
+{ "repo": "owner/repo", "check_run_id": 987654321, "log_tail": "always", "max_log_lines": 80 }
+```
+
+**依赖**：后台模式需要宿主组合里有 `ctx.jobs`（`@deepseek-ai/dsh-jobs` + `@deepseek-ai/dsh-jobs-local`，作业句柄由内置 `job_output` / `job_list` / `job_kill` 消费）。本插件把它声明为**可选 peer**：没有作业注册表时 `mode=background` 会明确报错，`mode=foreground` 仍以纯内联轮询工作（不产生作业，也不触发唤醒）。
 
 ## gh 无子命令的常用端点速查
 
@@ -91,13 +137,23 @@ gh 缺失或未登录时自动回退原生 HTTP（Node fetch + token）。**
 - **GraphQL 不做游标分页**：`github_graphql` 是单次查询直通，连接（connection）分页需要调用方自己在 `query` 里写 `after` 游标。
 - **`gh` 的可用性是探测式判定**：`auto` 模式用 `gh --version` + `gh auth status` 判定，判定失败就静默回退 HTTP，不会区分"没装 gh"和"装了但坏了"。
 - **企业版细节交给 gh**：`--hostname` 只透传给 gh，多主机凭据管理不在插件职责内；HTTP 回退使用单一 `host` 配置。
+- **CI 监控是轮询，不是 webhook**：间隔由 `interval_ms` / `ciIntervalMs` 控制（**默认 15s，下限 5s**）；作业运行期间每次轮询发 1–2 个 GitHub 请求，同一账号下与 `github_api` **共享同一 GitHub 速率预算**（长期监控请按 rate limit 预算设置间隔）。
+- **CI 监控只存在于当前进程**：作业记录、状态时间线、快照都保存在本进程的作业注册表（`ctx.jobs`，进程内实现）里；**宿主重启即失去全部监控**——句柄不可恢复、时间线不可再读、也不会自动续跑。CI 的真相始终在 GitHub 侧，重启后重新调用一次 `github_ci_watch` 即可（已到终态的目标会立刻返回结论）。
+- **连续失败只退避 4 档，第 5 次即报错**：可观测的退避序列是 5s → 10s → 20s → 40s（`backoffMs` 的 60s 封顶要等阈值调到 7 次以上才会出现）；**默认阈值下连续第 5 次失败不再等待，直接结算 `failed`** 并附最后一次错误。失败即报错优先于"退避到封顶"。
+- **终态只唤醒一次**：后台作业结算时由既有 `dsh-tool-jobs` 机制向 owner 交付**一次**通知（前提是 `settled.awaited=false` 且有 owner）；前台调用自己把结果收走（`awaited=true`）因此不再打扰，被 `job_kill` 停止的作业也不发通知。插件不实现第二套唤醒机制。
+- **CI 监控的日志端点**：Actions 日志走 `GET repos/{r}/actions/jobs/{id}/logs`（302 到签名 URL，客户端跟随重定向）。gh 后端默认拒绝含终端转义序列的响应，插件对该端点显式加 `--allow-escape-sequences`，并在写入报告前剥掉 ANSI 颜色码。check suite / check run 没有 job 日志，改为取 `output.title/summary/text` 与 annotations。
+- **日志按需抓取且有界**：默认 `log_tail=failure` **只抓失败单元**（`always` 抓所有带 job id 的单元，`none` 完全不抓）；`max_log_lines` 与 `ciMaxLogBytes` 分别限制每个单元的尾部行数与字节数，**超限只保留尾部**并在报告里标注「（已截断：原文 N 行）」。
+- **`log` 通道不进模型可见输出**：状态变更与结论走默认通道（模型可见），纯叙述（如"抓取单元 … 的日志尾部…"）走 `log` 通道；`job_output` 只返回 `stdout` / `stderr` 与终态 `result`，所以叙述不占用模型上下文。
+- **日志尾部可能含敏感内容**：插件只做 ANSI 剥离与截断，**不做脱敏**——构建日志里可能有环境变量、token 片段、内部主机名，这些内容会原样进入报告、作业输出环与模型上下文；转发、提交或粘贴前请自行检查。
+- **超量输出可能被宿主落盘（spill）**：作业输出环按字节保留（宿主默认活动期 256 KiB、结算后 16 KiB），超出部分的最旧字节被丢弃（读取会报告 lossy）；当输出被 harness spill 到临时文件时，`job_output` 结果里会带 `spillPaths` 指向该文件——它同样可能含敏感内容。本插件的 CI 作业只用 `append`、不提供 pull source，因此自身不产生 spill 文件。
+- **无作业注册表时的 `timeout_ms`**：该装配下 `timeout_ms` 仍会校验（非法值一律报错），但不参与等待——前台内联轮询由工具级超时兜底。
 
 ## 开发
 
 ```sh
 npm install
 npm run typecheck   # tsc 类型检查（erasable-syntax-only，兼容 Node 原生 type stripping）
-npm test            # 单元 + 注册测试（无网络）
+npm test            # 单元 + 注册 + CI 监控单元 + CI 作业集成（真实 dsh-jobs-local + 假客户端，无网络）
 npm run test:integration  # 只读集成冒烟：gh/http/404/分页/GraphQL（需要 gh 或 token）
 ```
 

@@ -7,7 +7,7 @@ test('plugin metadata', () => {
   assert.ok(inject.includes('tools'))
 })
 
-test('apply registers github_api and github_graphql', () => {
+test('apply registers github_api, github_graphql and github_ci_watch', () => {
   const registered: string[] = []
   const ctx = {
     tools: {
@@ -18,5 +18,5 @@ test('apply registers github_api and github_graphql', () => {
     },
   }
   apply(ctx as never, Config({}) as never)
-  assert.deepEqual([...registered].sort(), ['github_api', 'github_graphql'])
+  assert.deepEqual([...registered].sort(), ['github_api', 'github_ci_watch', 'github_graphql'])
 })

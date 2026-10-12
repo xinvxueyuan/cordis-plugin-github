@@ -3,8 +3,7 @@ import { promisify } from 'node:util'
 import { callGh, parseGhError } from './gh.ts'
 import { callHttpOnce } from './http.ts'
 import { GithubApiError } from './errors.ts'
-import type { JsonValue } from '@deepseek-ai/dsh-tools'
-import type { GithubMode, GithubRequestOptions, GithubResponse } from './types.ts'
+import type { GithubMode, GithubRequestOptions, GithubResponse, JsonValue } from './types.ts'
 
 const execFileAsync = promisify(execFile)
 
@@ -101,6 +100,7 @@ async function callGhBackend(config: BackendConfig, request: BackendRequest): Pr
       query: request.query,
       body: request.body,
       raw: true,
+      allowEscapeSequences: request.allowEscapeSequences,
       signal: request.signal,
     })
     if (result.code !== 0) throw parseGhError(result.stderr, result.stdout)

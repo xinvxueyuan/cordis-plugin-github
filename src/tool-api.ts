@@ -3,10 +3,10 @@ import type { ToolCallKind } from '@deepseek-ai/dsh-tools'
 import { githubCall } from './backend.ts'
 import { GithubApiError } from './errors.ts'
 import type { GithubConfig } from './config.ts'
-import type { GithubQuery } from './types.ts'
+import type { GithubQuery, JsonValue } from './types.ts'
 
 /** Keep only flat primitive query values; nested values cannot be sent to GitHub. */
-function normalizeQuery(query: Record<string, import('@deepseek-ai/dsh-tools').JsonValue> | undefined): GithubQuery | undefined {
+function normalizeQuery(query: Record<string, JsonValue> | undefined): GithubQuery | undefined {
   if (query === undefined) return undefined
   const result: GithubQuery = {}
   for (const [key, value] of Object.entries(query)) {

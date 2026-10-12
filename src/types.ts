@@ -1,4 +1,15 @@
-import type { JsonValue } from '@deepseek-ai/dsh-tools'
+/**
+ * JSON-serializable value. Declared locally instead of importing
+ * `@deepseek-ai/dsh-tools`' `JsonValue`: that alias moved out of the package's
+ * root exports in 0.2, while this plugin still supports 0.1 and 0.2 peers.
+ */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue }
 
 export type GithubMode = 'auto' | 'gh' | 'http'
 
@@ -21,6 +32,12 @@ export interface GithubRequestOptions {
   raw?: boolean
   /** Per-call API host override (enterprise GitHub). */
   host?: string
+  /**
+   * Allow terminal escape sequences in a raw text response. `gh api` refuses
+   * such bodies by default (Actions job logs carry ANSI color codes); the HTTP
+   * backend needs no flag.
+   */
+  allowEscapeSequences?: boolean
 }
 
 export interface GithubResponse {
