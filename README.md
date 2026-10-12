@@ -111,7 +111,7 @@ gh 缺失或未登录时自动回退原生 HTTP（Node fetch + token）。**
 { "repo": "owner/repo", "check_run_id": 987654321, "log_tail": "always", "max_log_lines": 80 }
 ```
 
-**依赖**：后台模式需要宿主组合里有 `ctx.jobs`（`@deepseek-ai/dsh-jobs` + `@deepseek-ai/dsh-jobs-local`，作业句柄由内置 `job_output` / `job_list` / `job_kill` 消费）。本插件把它声明为**可选 peer**：没有作业注册表时 `mode=background` 会明确报错，`mode=foreground` 仍以纯内联轮询工作（不产生作业，也不触发唤醒）。
+**依赖**：后台模式需要宿主组合里有 `ctx.jobs`（`@deepseek-ai/dsh-jobs` + `@deepseek-ai/dsh-jobs-local`，作业句柄由内置 `job_output` / `job_list` / `job_kill` 消费）。本插件把它声明为**可选 peer**：没有作业注册表时 `mode=background` 会明确报错，`mode=foreground` 仍以纯内联轮询工作（不产生作业，也不触发唤醒）。内联前台路径还需要宿主提供 agent 上下文：真实 profile 恒有 `dsh-agent`，只有「作业注册表存在、agent 上下文缺失」这种畸形装配下，前台才会直接报错。
 
 ## gh 无子命令的常用端点速查
 
@@ -139,7 +139,7 @@ gh 缺失或未登录时自动回退原生 HTTP（Node fetch + token）。**
 - **企业版细节交给 gh**：`--hostname` 只透传给 gh，多主机凭据管理不在插件职责内；HTTP 回退使用单一 `host` 配置。
 - **CI 监控是轮询，不是 webhook**：间隔由 `interval_ms` / `ciIntervalMs` 控制（**默认 15s，下限 5s**）；作业运行期间每次轮询发 1–2 个 GitHub 请求，同一账号下与 `github_api` **共享同一 GitHub 速率预算**（长期监控请按 rate limit 预算设置间隔）。
 - **CI 监控只存在于当前进程**：作业记录、状态时间线、快照都保存在本进程的作业注册表（`ctx.jobs`，进程内实现）里；**宿主重启即失去全部监控**——句柄不可恢复、时间线不可再读、也不会自动续跑。CI 的真相始终在 GitHub 侧，重启后重新调用一次 `github_ci_watch` 即可（已到终态的目标会立刻返回结论）。
-- **连续失败只退避 4 档，第 5 次即报错**：可观测的退避序列是 5s → 10s → 20s → 40s（`backoffMs` 的 60s 封顶要等阈值调到 7 次以上才会出现）；**默认阈值下连续第 5 次失败不再等待，直接结算 `failed`** 并附最后一次错误。失败即报错优先于"退避到封顶"。
+- **连续失败只退避 4 档，第 5 次即报错**：可观测的退避序列是 5s → 10s → 20s → 40s（`backoffMs` 的 60s 封顶要等阈值调到 6 次以上才会出现）；**默认阈值下连续第 5 次失败不再等待，直接结算 `failed`** 并附最后一次错误。失败即报错优先于"退避到封顶"。
 - **终态只唤醒一次**：后台作业结算时由既有 `dsh-tool-jobs` 机制向 owner 交付**一次**通知（前提是 `settled.awaited=false` 且有 owner）；前台调用自己把结果收走（`awaited=true`）因此不再打扰，被 `job_kill` 停止的作业也不发通知。插件不实现第二套唤醒机制。
 - **CI 监控的日志端点**：Actions 日志走 `GET repos/{r}/actions/jobs/{id}/logs`（302 到签名 URL，客户端跟随重定向）。gh 后端默认拒绝含终端转义序列的响应，插件对该端点显式加 `--allow-escape-sequences`，并在写入报告前剥掉 ANSI 颜色码。check suite / check run 没有 job 日志，改为取 `output.title/summary/text` 与 annotations。
 - **日志按需抓取且有界**：默认 `log_tail=failure` **只抓失败单元**（`always` 抓所有带 job id 的单元，`none` 完全不抓）；`max_log_lines` 与 `ciMaxLogBytes` 分别限制每个单元的尾部行数与字节数，**超限只保留尾部**并在报告里标注「（已截断：原文 N 行）」。
@@ -197,8 +197,8 @@ dsh plugin add @xinvxueyuan/cordis-plugin-github
 npm run build
 npm pack --dry-run
 
-# 2) 打标签推送 → GitHub Actions 自动跑测试 + npm stage publish（进入 stage 队列）
-git tag v0.1.x && git push origin main --tags
+# 2) 打签名标签并只推 tag → GitHub Actions 自动跑测试 + npm stage publish（进入 stage 队列）
+git tag -s v0.2.0 -m "release: v0.2.0" && git push origin v0.2.0
 
 # 3) 人工 2FA 批准上线
 npm stage list @xinvxueyuan/cordis-plugin-github   # 取 <stage-id>
@@ -213,8 +213,18 @@ npm stage approve <stage-id>                       # 需要 2FA
 
 ### GitHub Release 与签名
 
-> **现状（务必如实理解）**：以下机制描述的是**已经写进本仓库、但尚未实际执行过**的流程。
-> 截至写下这段文字，本仓库**还没有产生过任何 GitHub Release**，所以下面没有任何"已发布"的既成事实。
+> **现状（务必如实理解）**：以下机制**已在真实发布中执行过**，不再是纸面流程。
+> 已发布的 Release：`v0.1.1`、`v0.1.2`、`v0.2.0` —— 每次都创建 annotated + GPG 签名 tag，附件为 `*.tgz`、`SHA256SUMS` 与分离签名 `SHA256SUMS.asc`，tgz 与 SHA256SUMS 都带构建来源证明。
+> 最近一次 `v0.2.0`（2026-10-12）：tag 对象 `f3c73ff09a18c92d7b9e604b09a51cdb42139ac9`（指向提交 `62cff266b93fddb82cdc05cf9856840c248b3bb9`，GitHub 侧 `verification.verified=true` / `reason=valid`）；Publish run [38266407874](https://github.com/xinvxueyuan/cordis-plugin-github/actions/runs/38266407874) 的三个 job（Test / Stage for npm / GitHub Packages）全 success；Release run [38266407771](https://github.com/xinvxueyuan/cordis-plugin-github/actions/runs/38266407771) 全 success。
+
+**当前发布事实（2026-10-12）**
+
+| 项目 | 状态 |
+| --- | --- |
+| npm registry（registry.npmjs.org） | `latest` = **0.1.2**；**0.2.0 处于 stage 队列**（stage id `c90b9adb-a813-4ff5-9dcb-b48b12bb0399`，shasum `70ff32ec1a700b06cce3dfcfe0da464589baf1af`），等维护者 2FA 批准后才上线 |
+| GitHub Packages（npm.pkg.github.com） | `cordis-plugin-github` 已有 **0.2.0**（version id `1374076839`，2026-10-12）与 `0.1.2`（version id `1340095936`） |
+| GitHub Release | `v0.1.1`、`v0.1.2`、`v0.2.0`；v0.2.0 的 tgz sha256 = `9f966811953b161fb26935b8d1be6bea2c71a1be6d05e0cc77a92786a5a19bff` |
+| 本轮源码 | 提交 `62cff266b93fddb82cdc05cf9856840c248b3bb9`（`github_ci_watch`，18 文件），tag `v0.2.0` 指向该提交 |
 
 | 环节 | 将采用的机制 |
 | --- | --- |
@@ -225,17 +235,25 @@ npm stage approve <stage-id>                       # 需要 2FA
 | 构建来源证明 | `release.yml` 调用 `actions/attest-build-provenance`（pin 到 commit SHA），为 **tgz 与 SHA256SUMS 两者**生成 Sigstore 签名的 SLSA 构建来源证明，可用 `gh attestation verify` 校验。 |
 | npm 侧 | `release.yml` **完全不执行任何 npm publish**；npm 发布只由上面的 `publish.yml` staged publishing 负责。 |
 
-维护者操作顺序（**尚未执行过**）：
+维护者操作顺序（v0.2.0 实际执行的顺序）：
 
 ```sh
 # 1) 本机确认工作区干净、package.json 的 version 已就位（版本号由发布者手工提升）
 git status --porcelain
+npm run build && npm run typecheck && npm test
 
-# 2) 创建 annotated + GPG 签名 tag（私钥仅在本机使用；本机需能完成 GPG 签名）
-git tag -s v0.1.3 -m "v0.1.3"
+# 2) 提交并推 main —— main 的 push 不触发任何发布工作流（发布只认 tag）
+git push origin main
 
-# 3) 只推 tag —— release.yml 会构建产物、生成来源证明并创建 Release
-git push origin v0.1.3
+# 3) 创建 annotated + GPG 签名 tag（私钥仅在本机使用；本机需能完成 GPG 签名）
+git tag -s v0.2.0 -m "release: v0.2.0"
+
+# 4) 只推 tag —— publish.yml 跑测试 + npm stage publish；release.yml 构建产物、生成来源证明并创建 Release
+git push origin v0.2.0
+
+# 5) 本机对从 Release 下载的 SHA256SUMS 做分离签名，再附回 Release（release.yml 不自动做这一步）
+gpg --armor --detach-sign -o SHA256SUMS.asc SHA256SUMS
+gh release upload v0.2.0 SHA256SUMS.asc
 ```
 
 校验方式：
@@ -248,7 +266,7 @@ sha256sum -c SHA256SUMS
 gpg --verify SHA256SUMS.asc SHA256SUMS
 
 # 校验构建来源证明（需要 gh CLI）
-gh attestation verify xinvxueyuan-cordis-plugin-github-0.1.3.tgz --repo xinvxueyuan/cordis-plugin-github
+gh attestation verify xinvxueyuan-cordis-plugin-github-0.2.0.tgz --repo xinvxueyuan/cordis-plugin-github
 gh attestation verify SHA256SUMS --repo xinvxueyuan/cordis-plugin-github
 ```
 
