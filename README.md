@@ -89,7 +89,7 @@ gh 缺失或未登录时自动回退原生 HTTP（Node fetch + token）。**
 **两种模式**
 
 - `mode: "foreground"`：在调用内阻塞等待，CI 到终态即返回最终报告；超过 `timeout_ms` 仍在跑则返回 `promoted` 句柄（作业 id），监控继续在后台运行。正常结束的调用**不留下作业记录**。
-- `mode: "background"`：立即返回作业句柄（形如 `ci-1`），随后用**内置** `job_output` 读状态时间线与最终报告、`job_list` 列出、`job_kill` 停止；终态会由既有作业唤醒机制在后续轮次自动回报。
+- `mode: "background"`：立即返回作业句柄（形如 `ci-<id>`，具体形态由上游 `dsh-jobs-local` 决定），随后用**内置** `job_output` 读状态时间线与最终报告、`job_list` 列出、`job_kill` 停止；终态会由既有作业唤醒机制在后续轮次自动回报。
 
 **状态约定（重要）**
 
@@ -104,7 +104,7 @@ gh 缺失或未登录时自动回退原生 HTTP（Node fetch + token）。**
 // 前台：等一次历史 run 的结论
 { "repo": "xinvxueyuan/cordis-plugin-github", "run_id": 37439750365, "mode": "foreground" }
 
-// 后台：拿到 ci-N 后用 job_output / job_kill 管理
+// 后台：拿到 ci-<id> 后用 job_output / job_kill 管理
 { "run_url": "https://github.com/owner/repo/actions/runs/123456", "mode": "background" }
 
 // 失败时抓取日志尾部（前台或后台都可）

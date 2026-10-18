@@ -13,7 +13,7 @@ declare module '@deepseek-ai/dsh-jobs' {
   }
 }
 
-/** Job kind registered for CI watches (the job id is `ci-<n>`). */
+/** Job kind registered for CI watches (the job id is `ci-<id>`). */
 export const CI_JOB_KIND = 'ci'
 
 /**

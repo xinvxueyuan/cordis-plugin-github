@@ -96,7 +96,7 @@ async function setup(options: { withRegistry?: boolean; client?: StubClient } = 
 
 const execFor = (signal?: AbortSignal) => ({ signal, agent: undefined }) as never
 
-test('background: returns a ci-N handle in under 2s and settles completed on CI success', async () => {
+test('background: returns a ci-<id> handle in under 2s and settles completed on CI success', async () => {
   const harness = await setup()
   const started = Date.now()
   const value = (await harness.tool.execute(
@@ -105,7 +105,7 @@ test('background: returns a ci-N handle in under 2s and settles completed on CI 
   )) as { mode: string; jobId: string }
   const elapsed = Date.now() - started
   assert.equal(value.mode, 'background')
-  assert.match(value.jobId, /^ci-\d+$/)
+  assert.match(value.jobId, /^ci-[\da-f]+$/)
   assert.ok(elapsed < 2000, `background call took ${elapsed}ms`)
 
   const listed = harness.jobs?.list(undefined) ?? []

@@ -220,7 +220,7 @@ const DESCRIPTION =
   '监控一次 GitHub CI（Actions run / check suite / check run），长生命周期、可持续数分钟到数小时。' +
   'mode=foreground（默认）：在调用内阻塞等待，CI 到终态即返回最终报告（conclusion + 失败单元清单 + 按 log_tail 抓取的日志尾部）；' +
   '超过 timeout_ms 仍在跑则返回 promoted 句柄（job id），监控继续在后台运行。' +
-  'mode=background：立即返回作业句柄（形如 ci-N），之后用内置 job_output 读状态时间线与最终报告、job_list 列出、job_kill 停止；' +
+  'mode=background：立即返回作业句柄（形如 ci-<id>），之后用内置 job_output 读状态时间线与最终报告、job_list 列出、job_kill 停止；' +
   '终态会在后续轮次由既有作业机制自动回报。' +
   '状态约定：CI 自身成功或失败都使作业结算为 completed（CI 结论写在 detail/result 里）；' +
   '只有监控自身故障（鉴权失败、404、连续网络失败）才结算为 failed；日志抓取失败只记 stderr，不影响结算。'
