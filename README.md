@@ -214,10 +214,22 @@ npm stage approve <stage-id>                       # 需要 2FA
 ### GitHub Release 与签名
 
 > **现状（务必如实理解）**：以下机制**已在真实发布中执行过**，不再是纸面流程。
-> 已发布的 Release：`v0.1.1`、`v0.1.2`、`v0.2.0` —— 每次都创建 annotated + GPG 签名 tag，附件为 `*.tgz`、`SHA256SUMS` 与分离签名 `SHA256SUMS.asc`，tgz 与 SHA256SUMS 都带构建来源证明。
-> 最近一次 `v0.2.0`（2026-10-12）：tag 对象 `f3c73ff09a18c92d7b9e604b09a51cdb42139ac9`（指向提交 `62cff266b93fddb82cdc05cf9856840c248b3bb9`，GitHub 侧 `verification.verified=true` / `reason=valid`）；Publish run [38266407874](https://github.com/xinvxueyuan/cordis-plugin-github/actions/runs/38266407874) 的三个 job（Test / Stage for npm / GitHub Packages）全 success；Release run [38266407771](https://github.com/xinvxueyuan/cordis-plugin-github/actions/runs/38266407771) 全 success。
+> 已发布的 Release：`v0.1.1`、`v0.1.2`、`v0.2.0`、`v0.2.1` —— 每次都创建 annotated + GPG 签名 tag，附件为 `*.tgz`、`SHA256SUMS` 与分离签名 `SHA256SUMS.asc`，tgz 与 SHA256SUMS 都带构建来源证明。
+> 上一版 `v0.2.0`（2026-10-12）：tag 对象 `f3c73ff09a18c92d7b9e604b09a51cdb42139ac9`（指向提交 `62cff266b93fddb82cdc05cf9856840c248b3bb9`，GitHub 侧 `verification.verified=true` / `reason=valid`）；Publish run [38266407874](https://github.com/xinvxueyuan/cordis-plugin-github/actions/runs/38266407874) 的三个 job（Test / Stage for npm / GitHub Packages）全 success；Release run [38266407771](https://github.com/xinvxueyuan/cordis-plugin-github/actions/runs/38266407771) 全 success。
 
-**当前发布事实（2026-10-12）**
+**当前发布事实（2026-10-19，v0.2.1）**
+
+| 项目 | 状态 |
+| --- | --- |
+| npm registry（registry.npmjs.org） | `latest` = **0.2.1**（已上线 2026-10-19）。入队来源：stage id `70154233-22c3-4b78-9229-c22c9ba0a621`、shasum `2cd0da2b31b92299937e84dc2ef83347316ab8cd`、`staged by: GitHub Actions (trusted automation)`；批准（`npm stage approve 70154233-…`）由**维护者本人在 2FA 下**执行，发布者未代做；批准后 `npm stage list` 已清空 |
+| GitHub Packages（npm.pkg.github.com） | `cordis-plugin-github` 已有 **0.2.1**（本轮 CI 的 `Publish to GitHub Packages` job success），以及更早的 0.2.0（version id `1374076839`）与 0.1.2 |
+| GitHub Release | <https://github.com/xinvxueyuan/cordis-plugin-github/releases/tag/v0.2.1>，资产 `xinvxueyuan-cordis-plugin-github-0.2.1.tgz`（56 481 B）与 `SHA256SUMS`；tgz sha256 = `b5554fcbd4a91218a71ff675d9da346221edf46fccfe57069ff11ed5e7e85af7`，其 **SHA1 = `2cd0da2b31b92299937e84dc2ef83347316ab8cd`** == npm 上 published shasum ⇒ **同一份字节** |
+| tag | annotated + GPG `v0.2.1`；tag 对象 `cf7c0f29376f50a6e4a6c205fbb41375362f44c4`，指向提交 `bad95d0a8c3afff46efc619507e3a85918752761` |
+| CI | Publish run [`39146370024`](https://github.com/xinvxueyuan/cordis-plugin-github/actions/runs/39146370024) **success**；Release run [`39146370022`](https://github.com/xinvxueyuan/cordis-plugin-github/actions/runs/39146370022) **success** |
+| 构建来源证明 | `gh attestation verify <tgz> --repo xinvxueyuan/cordis-plugin-github --source-ref refs/tags/v0.2.1` **退出 0**；负向对照 `refs/heads/main` **退出 1** ⇒ 证明只命中本 tag |
+| 本轮源码 | 发布提交 `bad95d0a…`，其后的合并提交 `8e3e412`（把两个 Dependabot 提交并入 main）。本版把 `dsh-*` peer 加宽为 `^0.2.0-rc.2 \|\| ^0.2.1-rc.2` 与 `^0.1.0-rc.6 \|\| ^0.2.0-rc.1 \|\| ^0.2.1-rc.2`、devDeps 升到 `^0.2.1-rc.2`，并跟随上游 `dsh-jobs-local@0.2.1-rc.2` 的 job id 形态变化（`ci-<计数>` → `ci-<16位hex>`）：把测试断言放宽为 `/^ci-[\da-f]+$/`（该断言原本锁的是上游实现细节；句柄可用性仍由 `jobs.wait`/`jobs.read` 端到端回环把关），并同步 3 处文字与 2 处 README 示例为 `ci-<id>`。**tag 指向的提交不带后续 Dependabot 的 `@types/node 26.6.4`**（仅 devDependency，不影响运行时与 peer 契约），该提升由 `8e3e412` 带入 main |
+
+**上一版发布事实（2026-10-12，v0.2.0）**
 
 | 项目 | 状态 |
 | --- | --- |
