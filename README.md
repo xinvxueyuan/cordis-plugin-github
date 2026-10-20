@@ -39,6 +39,17 @@ gh 缺失或未登录时自动回退原生 HTTP（Node fetch + token）。**
 
 重启后 agent 即可调用 `github_api` 与 `github_graphql`。
 
+## 组合节点（官方）
+
+本插件在 bundle patch（`cordis.patch.yml`）里显式声明它消费的官方服务节点；**`inject:` 在 bundle patch 与 `src/index.ts` 中必须保持一致**（由 `test/manifest.test.ts` 守护：从两处文本提取名单并断言集合相等）。
+
+| 服务键 | 官方提供方（Loader row / 包） | 必需性 | 本插件用途 |
+| --- | --- | --- | --- |
+| `tools` | row `tools` / `@deepseek-ai/dsh-tools` | 必需 | 注册 gh 系工具（`github_api` / `github_graphql` / `github_ci_watch`） |
+| `jobs` | row `jobs` / `@deepseek-ai/dsh-jobs-local` | 可选（reactive） | 长任务轮询：`github_ci_watch` 的 `mode: background` 与前台超时转后台句柄；缺它时插件仍激活，只退化为内联前台轮询 |
+
+`tools` 缺失时插件无法注册任何工具，因此写进 `inject`；`jobs` 走 `ctx.inject(['jobs'], …)` 的 reactive 注入，**不在** `inject` 列表里，缺少该服务时插件照常激活。
+
 ## 配置（Config）
 
 | 字段 | 默认 | 说明 |
