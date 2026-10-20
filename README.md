@@ -298,6 +298,16 @@ gh attestation verify SHA256SUMS --repo xinvxueyuan/cordis-plugin-github
 - `release.yml` 使用 `gh release create --verify-tag`，**要求 tag 已存在、不会自行创建 tag**；重复运行会转为"覆盖上传附件"。
 - 所有 workflow 的 `uses:` 都 pin 到完整 40 位 commit SHA（当前：`actions/checkout` v4.4.0、`actions/setup-node` v4.4.0、`actions/attest-build-provenance` v4.2.2），由 `.github/dependabot.yml` 的 `github-actions` 生态负责推进。
 
+## 发布记录：v0.3.0（2026-10-20）—— 以官方 bundle 形态发布
+
+| 项 | 事实 |
+|---|---|
+| 内容 | 新增 `cordis.patch.yml`（Loader row `github` + 显式 `inject: [tools]`、默认 `config.mode: auto`）、`package.json` 的 `dsh.bundle.patch` 与顶层 `icon`、`locale/{en,zh}.json`、`icon.svg`、`test/manifest.test.ts`（守护 patch、`inject` 与源码集合相等、显示资源与打包面） |
+| 提交 / tag | `ca240ac`「feat: ship as an official DSH bundle (v0.3.0)」，8 条显式路径；annotated + GPG `v0.3.0`，tag 对象 `f84d11f6e1a8534a14bd1a4fbda7400d2465633f`，`git tag -v` = Good（`6C6FD9B2…B35A`） |
+| CI | Publish run `39387248504`（`Test` ✅ / `Publish to GitHub Packages` ✅ / `Stage package (with provenance)` ✅）、Release run `39387248500` ✅ |
+| stage / 上线（现查） | stage id `7573c49c-8b71-46b3-b627-0dd14685b860`、shasum `b1f576dd64383ad69e1c5ad0ddd110cd0a896120`；`dist-tags.latest = 0.3.0`、`dist.shasum` 与 stage shasum、Release tgz 的 SHA1 **逐字相同**、provenance `https://slsa.dev/provenance/v1`、`dsh.bundle.patch = ./cordis.patch.yml`；上线时间 `2026-10-20T07:41:45.099Z`；`npm stage list` 已空 |
+| Release | <https://github.com/xinvxueyuan/cordis-plugin-github/releases/tag/v0.3.0>，本轮为 CI 两资产：tgz（58 960 B）与 `SHA256SUMS`（109 B）；本地复算 SHA256 逐字一致（本轮未附手签 `.asc`） |
+
 ## 许可
 
 本仓库采用 **MIT OR Apache-2.0** 双许可（与 `package.json` 的 `license` 字段一致），
